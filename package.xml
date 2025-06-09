@@ -16,7 +16,6 @@
     <build_type>ament_python</build_type>
   </export>
 
-  <exec_depend>moveit_py</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>rclpy</exec_depend>
 </package>
