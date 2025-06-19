@@ -9,11 +9,11 @@ from rclpy.node import Node
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 HELP = """
-Teleop Crane+ V2 (Direct Joint Control):
+Teleop Crane+ V2.1 (Direct Joint Control):
 ---------------------------------------
 Q/E: Select joint (1-4)
-W/S: + / - selected joint
-R/F: + / - all joints (coarse)
+W/S or ↑/↓: + / - selected joint
+R/F or +/-: + / - all joints (coarse)
 O:   Open gripper
 C:   Close gripper
 X:   Reset robot to vertical (all-zero) position
@@ -38,7 +38,11 @@ class KeyboardInput:
         termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
     def get_key(self):
         if select.select([sys.stdin], [], [], 0)[0]:
-            return sys.stdin.read(1)
+            ch1 = sys.stdin.read(1)
+            if ch1 == '\x1b':  # arrow key prefix
+                ch2 = sys.stdin.read(2)
+                return ch1 + ch2  # e.g. '\x1b[A' or '\x1b[B'
+            return ch1
         return None
 
 class TeleopNode(Node):
@@ -67,13 +71,16 @@ class TeleopNode(Node):
                     elif key.lower() == 'e':
                         self.selected = (self.selected + 1) % len(ARM_JOINT_NAMES)
                         print(f"Selected joint: {ARM_JOINT_NAMES[self.selected]}")
-                    elif key.lower() == 'w':
+                    # increase selected joint: W or Up arrow
+                    elif key in ('w', '\x1b[A'):
                         self.arm_pos[self.selected] += ARM_STEP
-                    elif key.lower() == 's':
+                    # decrease selected joint: S or Down arrow
+                    elif key in ('s', '\x1b[B'):
                         self.arm_pos[self.selected] -= ARM_STEP
-                    elif key.lower() == 'r':
+                    # Coarse adjust: R/F or +/-
+                    elif key.lower() == 'r' or key == '+':
                         self.arm_pos = [x + COARSE_STEP for x in self.arm_pos]
-                    elif key.lower() == 'f':
+                    elif key.lower() == 'f' or key == '-':
                         self.arm_pos = [x - COARSE_STEP for x in self.arm_pos]
                     elif key.lower() == 'o':
                         self.gripper_pos = GRIPPER_OPEN
